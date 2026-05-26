@@ -40,11 +40,12 @@ java -cp bin simulation.Simulateur
 
 ## Auteurs
 
-- 
-- 
-- 
-- 
-- 
+- Muhammad Redha Boutmene
+- Louay Dardouri
+- Ayman Yazid
+- Sidar Mese
+- Anes Litim
+- Sulliman Chetouani
 
 ## Encadrants
 

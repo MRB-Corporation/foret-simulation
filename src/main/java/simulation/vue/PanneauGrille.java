@@ -61,14 +61,15 @@ public class PanneauGrille extends JPanel {
     }
 
     private Color couleurPourEtat(EtatCellule etat) {
-        return switch (etat) {
-            case INTACT         -> new Color(34,  139, 34);
-            case HUMIDE         -> new Color(32,  178, 170);
-            case EN_FEU         -> new Color(255, 80,  0);
-            case BRULE          -> new Color(50,  30,  10);
-            case COUPE_FEU      -> new Color(160, 140, 100);
-            case EAU            -> new Color(30,  100, 200);
-            case ZONE_URBANISEE -> new Color(180, 180, 180);
-        };
+        switch (etat) {
+            case INTACT:         return new Color(34,  139, 34);
+            case HUMIDE:         return new Color(32,  178, 170);
+            case EN_FEU:         return new Color(255, 80,  0);
+            case BRULE:          return new Color(50,  30,  10);
+            case COUPE_FEU:      return new Color(160, 140, 100);
+            case EAU:            return new Color(30,  100, 200);
+            case ZONE_URBANISEE: return new Color(180, 180, 180);
+            default:             return Color.BLACK;
+        }
     }
 }

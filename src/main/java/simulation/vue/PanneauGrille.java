@@ -1,6 +1,7 @@
 package simulation.vue;
 
 import simulation.Simulateur;
+import simulation.modele.Cellule;
 import simulation.modele.EtatCellule;
 import simulation.modele.Grille;
 import simulation.utilitaire.Constantes;
@@ -13,10 +14,8 @@ import java.awt.event.MouseEvent;
 public class PanneauGrille extends JPanel {
 
     private Grille grille;
-    private final Simulateur simulateur;
 
     public PanneauGrille(Simulateur simulateur) {
-        this.simulateur = simulateur;
         this.grille = simulateur.getGrille();
 
         int w = grille.getLargeur() * Constantes.TAILLE_CELLULE_PX;
@@ -47,12 +46,12 @@ public class PanneauGrille extends JPanel {
 
         for (int y = 0; y < grille.getHauteur(); y++) {
             for (int x = 0; x < grille.getLargeur(); x++) {
-                g.setColor(couleurPourEtat(grille.getCellule(x, y).getEtat()));
+                Cellule c = grille.getCellule(x, y);
+                g.setColor(couleurPourCellule(c));
                 g.fillRect(x * t, y * t, t, t);
             }
         }
 
-        // Grille légère semi-transparente
         g.setColor(new Color(0, 0, 0, 25));
         for (int x = 0; x <= grille.getLargeur(); x++)
             g.drawLine(x * t, 0, x * t, grille.getHauteur() * t);
@@ -60,12 +59,12 @@ public class PanneauGrille extends JPanel {
             g.drawLine(0, y * t, grille.getLargeur() * t, y * t);
     }
 
-    private Color couleurPourEtat(EtatCellule etat) {
-        switch (etat) {
-            case INTACT:         return new Color(34,  139, 34);
-            case HUMIDE:         return new Color(32,  178, 170);
-            case EN_FEU:         return new Color(255, 80,  0);
-            case BRULE:          return new Color(50,  30,  10);
+    private Color couleurPourCellule(Cellule c) {
+        if (c.getEtat() == EtatCellule.EN_FEU) return new Color(255, 80,  0);
+        if (c.getEtat() == EtatCellule.BRULE)  return new Color(50,  30,  10);
+        switch (c.getTerrain()) {
+            case FORET:          return new Color(34,  139, 34);
+            case ZONE_HUMIDE:    return new Color(32,  178, 170);
             case COUPE_FEU:      return new Color(160, 140, 100);
             case EAU:            return new Color(30,  100, 200);
             case ZONE_URBANISEE: return new Color(180, 180, 180);

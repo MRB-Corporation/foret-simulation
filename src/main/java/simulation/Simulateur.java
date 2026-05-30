@@ -6,6 +6,7 @@ import simulation.chargeur.ChargeurTopologie;
 import simulation.modele.Cellule;
 import simulation.modele.EtatCellule;
 import simulation.modele.Grille;
+import simulation.modele.Vent;
 import simulation.utilitaire.Constantes;
 import simulation.utilitaire.FormulesPhysiques;
 import simulation.vue.VueSimulation;
@@ -20,6 +21,7 @@ public class Simulateur {
     private Grille grille;
     private Grille grilleInitiale;
     private AlgorithmePropagation algorithme;
+    private Vent vent;
     private VueSimulation vue;
     private Timer timer;
     private int vitesseMs;
@@ -31,6 +33,7 @@ public class Simulateur {
         vitesseMs = Constantes.VITESSE_DEFAUT_MS;
         pas = 0;
         algorithme = new PropagationOrthogonale();
+        vent = new Vent();
         grille = ChargeurTopologie.genererAleatoire();
         grilleInitiale = copierGrille(grille);
     }
@@ -71,22 +74,32 @@ public class Simulateur {
                 Cellule c = grille.getCellule(x, y);
                 if (c.getEtat() != EtatCellule.EN_FEU) continue;
 
-                // Propagation vers les voisins inflammables
+                // Propagation et chauffage des voisins inflammables
                 for (Cellule voisin : algorithme.calculerVoisins(c, grille)) {
-                    if (RNG.nextDouble() < FormulesPhysiques.probabiliteInflammation(voisin)) {
+                    int dx = voisin.getX() - c.getX();
+                    int dy = voisin.getY() - c.getY();
+
+                    voisin.chauffer(FormulesPhysiques.deltaTemperature(voisin));
+
+                    double proba = FormulesPhysiques.probabiliteInflammationAvecVent(voisin, vent, dx, dy);
+                    if (RNG.nextDouble() < proba) {
                         aEnflammer.add(voisin);
                     }
                 }
 
-                // La cellule se consume (haute résistance = brûle lentement)
-                if (RNG.nextDouble() > c.getResistance()) {
+                // Décrémenter le compteur de combustion
+                c.decrementerCombuston();
+                if (c.getCompteurCombuston() <= 0) {
                     aBruler.add(c);
                 }
             }
         }
 
         for (Cellule c : aEnflammer) {
-            if (c.getEtat().peutSEnflammer()) c.setEtat(EtatCellule.EN_FEU);
+            if (c.peutSEnflammer()) {
+                c.setEtat(EtatCellule.EN_FEU);
+                c.setCompteurCombuston(FormulesPhysiques.dureeCombuston(c));
+            }
         }
         for (Cellule c : aBruler) {
             c.setEtat(EtatCellule.BRULE);
@@ -97,8 +110,9 @@ public class Simulateur {
 
     public void allumerFeu(int x, int y) {
         Cellule c = grille.getCellule(x, y);
-        if (c != null && c.getEtat().peutSEnflammer()) {
+        if (c != null && c.peutSEnflammer()) {
             c.setEtat(EtatCellule.EN_FEU);
+            c.setCompteurCombuston(FormulesPhysiques.dureeCombuston(c));
             if (vue != null) vue.rafraichir(grille);
         }
     }
@@ -120,11 +134,13 @@ public class Simulateur {
                 Cellule src = source.getCellule(x, y);
                 Cellule dst = copie.getCellule(x, y);
                 dst.setEtat(src.getEtat());
+                dst.setTerrain(src.getTerrain());
                 dst.setHumidite(src.getHumidite());
                 dst.setInflammabilite(src.getInflammabilite());
                 dst.setResistance(src.getResistance());
                 dst.setDensiteVegetation(src.getDensiteVegetation());
                 dst.setTemperature(src.getTemperature());
+                dst.setCompteurCombuston(src.getCompteurCombuston());
             }
         }
         return copie;
@@ -132,8 +148,9 @@ public class Simulateur {
 
     // ── Getters / Setters ──────────────────────────────────────────────────────
 
-    public Grille getGrille()  { return grille; }
-    public int getPas()        { return pas; }
+    public Grille getGrille() { return grille; }
+    public int getPas()       { return pas; }
+    public Vent getVent()     { return vent; }
 
     public void setVue(VueSimulation vue) {
         this.vue = vue;
@@ -147,6 +164,10 @@ public class Simulateur {
     public void setVitesse(int ms) {
         vitesseMs = ms;
         if (timer != null) timer.setDelay(ms);
+    }
+
+    public void setVent(Vent vent) {
+        this.vent = vent;
     }
 
     // ── Point d'entrée ─────────────────────────────────────────────────────────

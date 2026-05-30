@@ -7,6 +7,7 @@ import simulation.algorithme.PropagationOrthogonale;
 import simulation.algorithme.PropagationRadiale;
 import simulation.chargeur.ChargeurTopologie;
 import simulation.modele.Grille;
+import simulation.modele.Vent;
 import simulation.utilitaire.Constantes;
 
 import javax.swing.*;
@@ -21,6 +22,19 @@ public class PanneauControle extends JPanel {
     private JButton btnDemarrerPause;
     private JLabel  lblPas;
     private boolean enMarche = false;
+
+    private JComboBox<String> comboVent;
+    private JSlider sliderVent;
+
+    // "Vent du Nord" = souffle vers le Sud = direction π/2 en coords grille (y vers le bas)
+    // "Vent de l'Ouest" = souffle vers l'Est = direction 0
+    private static final double[] DIRECTIONS_VENT = {
+        0.0,              // Aucun (vitesse forcée à 0)
+        Math.PI / 2,      // Vent du Nord (souffle vers le Sud)
+        -Math.PI / 2,     // Vent du Sud  (souffle vers le Nord)
+        0.0,              // Vent de l'Ouest (souffle vers l'Est)
+        Math.PI           // Vent de l'Est  (souffle vers l'Ouest)
+    };
 
     private static final AlgorithmePropagation[] ALGOS = {
         new PropagationOrthogonale(),
@@ -55,12 +69,12 @@ public class PanneauControle extends JPanel {
 
         add(new JSeparator(JSeparator.VERTICAL));
 
-        // --- Slider vitesse ---
+        // --- Slider vitesse simulation ---
         add(new JLabel("Vitesse :"));
         JSlider sliderVitesse = new JSlider(
             Constantes.VITESSE_MIN_MS, Constantes.VITESSE_MAX_MS, Constantes.VITESSE_DEFAUT_MS
         );
-        sliderVitesse.setInverted(true); // valeur haute = lent → on inverse pour que droite = rapide
+        sliderVitesse.setInverted(true);
         sliderVitesse.setMajorTickSpacing(500);
         sliderVitesse.setPaintTicks(true);
         sliderVitesse.setPreferredSize(new Dimension(150, 40));
@@ -76,6 +90,22 @@ public class PanneauControle extends JPanel {
         JComboBox<String> comboAlgo = new JComboBox<>(noms);
         comboAlgo.addActionListener(e -> simulateur.setAlgorithme(ALGOS[comboAlgo.getSelectedIndex()]));
         add(comboAlgo);
+
+        add(new JSeparator(JSeparator.VERTICAL));
+
+        // --- Vent ---
+        add(new JLabel("Vent :"));
+        comboVent = new JComboBox<>(new String[]{
+            "Aucun", "Du Nord", "Du Sud", "De l'Ouest", "De l'Est"
+        });
+        comboVent.addActionListener(e -> appliquerVent());
+        add(comboVent);
+
+        sliderVent = new JSlider(0, 100, 0);
+        sliderVent.setToolTipText("Intensité du vent");
+        sliderVent.setPreferredSize(new Dimension(100, 40));
+        sliderVent.addChangeListener(e -> appliquerVent());
+        add(sliderVent);
 
         add(new JSeparator(JSeparator.VERTICAL));
 
@@ -106,6 +136,12 @@ public class PanneauControle extends JPanel {
             btnDemarrerPause.setText("Pause");
         }
         enMarche = !enMarche;
+    }
+
+    private void appliquerVent() {
+        int idx = comboVent.getSelectedIndex();
+        double vitesse = (idx == 0) ? 0.0 : sliderVent.getValue() / 100.0;
+        simulateur.setVent(new Vent(DIRECTIONS_VENT[idx], vitesse));
     }
 
     public void rafraichirPas() {

@@ -39,7 +39,7 @@ public class PropagationRadiale implements AlgorithmePropagation {
 
                     if (grille.estValide(nx, ny)) {
                         Cellule voisin = grille.getCellule(nx, ny);
-                        if (voisin.getEtat().peutSEnflammer()) {
+                        if (voisin.peutSEnflammer()) {
                             voisins.add(voisin);
                         }
                     }

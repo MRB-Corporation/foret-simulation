@@ -6,6 +6,7 @@ import simulation.algorithme.PropagationMoore;
 import simulation.algorithme.PropagationOrthogonale;
 import simulation.algorithme.PropagationRadiale;
 import simulation.chargeur.ChargeurTopologie;
+import simulation.export.ExporteurSimulationCsv;
 import simulation.modele.Grille;
 import simulation.modele.Vent;
 import simulation.utilitaire.Constantes;
@@ -13,6 +14,7 @@ import simulation.utilitaire.Constantes;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
+import java.io.IOException;
 
 public class PanneauControle extends JPanel {
 
@@ -46,8 +48,10 @@ public class PanneauControle extends JPanel {
         this.simulateur = simulateur;
         this.vue = vue;
 
-        setLayout(new FlowLayout(FlowLayout.CENTER, 10, 8));
+        setLayout(new WrapLayout(FlowLayout.CENTER, 10, 8));
         setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        setBackground(Color.WHITE);
+        setOpaque(true);
 
         construire();
     }
@@ -66,6 +70,24 @@ public class PanneauControle extends JPanel {
             btnDemarrerPause.setText("Démarrer");
         });
         add(btnReset);
+
+        add(new JSeparator(JSeparator.VERTICAL));
+
+        // --- Zoom controls ---
+        JButton btnZoomIn = new JButton("Zoom +");
+        btnZoomIn.setToolTipText("Zoomer (touche +)");
+        btnZoomIn.addActionListener(e -> vue.zoomIn());
+        add(btnZoomIn);
+
+        JButton btnZoomOut = new JButton("Zoom -");
+        btnZoomOut.setToolTipText("Dézoomer (touche -)");
+        btnZoomOut.addActionListener(e -> vue.zoomOut());
+        add(btnZoomOut);
+
+        JButton btnResetZoom = new JButton("Réinitialiser zoom");
+        btnResetZoom.setToolTipText("Réinitialise le zoom (touche 0)");
+        btnResetZoom.addActionListener(e -> vue.resetZoom());
+        add(btnResetZoom);
 
         add(new JSeparator(JSeparator.VERTICAL));
 
@@ -118,6 +140,11 @@ public class PanneauControle extends JPanel {
         btnSauvegarder.addActionListener(e -> sauvegarderFichier());
         add(btnSauvegarder);
 
+        JButton btnExporterSimulation = new JButton("Exporter simulation CSV");
+        btnExporterSimulation.setToolTipText("Exporte les statistiques de la simulation démarrée");
+        btnExporterSimulation.addActionListener(e -> exporterSimulation());
+        add(btnExporterSimulation);
+
         add(new JSeparator(JSeparator.VERTICAL));
 
         // --- Compteur de pas ---
@@ -169,6 +196,44 @@ public class PanneauControle extends JPanel {
             String chemin = fc.getSelectedFile().getAbsolutePath();
             if (!chemin.endsWith(".csv")) chemin += ".csv";
             ChargeurTopologie.sauvegarder(simulateur.getGrille(), chemin);
+        }
+    }
+
+    private void exporterSimulation() {
+        if (simulateur.getHistoriqueSimulation().isEmpty()) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Démarre d'abord la simulation pour créer des données à exporter.",
+                "Aucune donnée de simulation",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+            return;
+        }
+
+        JFileChooser fc = new JFileChooser();
+        fc.setFileFilter(new FileNameExtensionFilter("Fichiers CSV (*.csv)", "csv"));
+        fc.setSelectedFile(new java.io.File("simulation_donnees.csv"));
+
+        if (fc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            String chemin = fc.getSelectedFile().getAbsolutePath();
+            if (!chemin.endsWith(".csv")) chemin += ".csv";
+
+            try {
+                ExporteurSimulationCsv.exporter(simulateur.getHistoriqueSimulation(), chemin);
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Export terminé : " + simulateur.getHistoriqueSimulation().size() + " lignes de données.",
+                    "CSV exporté",
+                    JOptionPane.INFORMATION_MESSAGE
+                );
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Impossible d'exporter le CSV : " + ex.getMessage(),
+                    "Erreur d'export",
+                    JOptionPane.ERROR_MESSAGE
+                );
+            }
         }
     }
 }

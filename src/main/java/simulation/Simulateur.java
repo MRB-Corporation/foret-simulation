@@ -3,6 +3,7 @@ package simulation;
 import simulation.algorithme.AlgorithmePropagation;
 import simulation.algorithme.PropagationOrthogonale;
 import simulation.chargeur.ChargeurTopologie;
+import simulation.export.InstantaneSimulation;
 import simulation.modele.Cellule;
 import simulation.modele.EtatCellule;
 import simulation.modele.Grille;
@@ -13,6 +14,7 @@ import simulation.vue.VueSimulation;
 
 import javax.swing.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
@@ -26,6 +28,8 @@ public class Simulateur {
     private Timer timer;
     private int vitesseMs;
     private int pas;
+    private boolean simulationDemarree;
+    private final List<InstantaneSimulation> historiqueSimulation;
 
     private static final Random RNG = new Random();
 
@@ -36,11 +40,18 @@ public class Simulateur {
         vent = new Vent();
         grille = ChargeurTopologie.genererAleatoire();
         grilleInitiale = copierGrille(grille);
+        simulationDemarree = false;
+        historiqueSimulation = new ArrayList<>();
     }
 
     // ── Contrôle ───────────────────────────────────────────────────────────────
 
     public void demarrer() {
+        if (!simulationDemarree) {
+            historiqueSimulation.clear();
+            enregistrerInstantane();
+            simulationDemarree = true;
+        }
         if (timer == null) {
             timer = new Timer(vitesseMs, e -> {
                 pasDeTemps();
@@ -59,6 +70,8 @@ public class Simulateur {
         pause();
         pas = 0;
         grille = copierGrille(grilleInitiale);
+        simulationDemarree = false;
+        historiqueSimulation.clear();
         if (vue != null) vue.rafraichir(grille);
     }
 
@@ -104,6 +117,10 @@ public class Simulateur {
         for (Cellule c : aBruler) {
             c.setEtat(EtatCellule.BRULE);
         }
+
+        if (simulationDemarree) {
+            enregistrerInstantane();
+        }
     }
 
     // ── Interaction utilisateur ────────────────────────────────────────────────
@@ -122,6 +139,8 @@ public class Simulateur {
         pas = 0;
         grille = nouvelleGrille;
         grilleInitiale = copierGrille(grille);
+        simulationDemarree = false;
+        historiqueSimulation.clear();
         if (vue != null) vue.rafraichir(grille);
     }
 
@@ -146,11 +165,18 @@ public class Simulateur {
         return copie;
     }
 
+    private void enregistrerInstantane() {
+        historiqueSimulation.add(InstantaneSimulation.depuis(grille, pas, algorithme.getNom(), vent));
+    }
+
     // ── Getters / Setters ──────────────────────────────────────────────────────
 
     public Grille getGrille() { return grille; }
     public int getPas()       { return pas; }
     public Vent getVent()     { return vent; }
+    public List<InstantaneSimulation> getHistoriqueSimulation() {
+        return Collections.unmodifiableList(historiqueSimulation);
+    }
 
     public void setVue(VueSimulation vue) {
         this.vue = vue;

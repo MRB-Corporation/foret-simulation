@@ -4,16 +4,17 @@ import simulation.modele.Cellule;
 import simulation.modele.Grille;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class PropagationRadiale implements AlgorithmePropagation {
 
     private int rayon;
+    private static final Random RNG = new Random();
 
     public PropagationRadiale(int rayon) {
         this.rayon = rayon;
     }
 
-    // Constructeur par défaut avec rayon de 3
     public PropagationRadiale() {
         this(3);
     }
@@ -28,12 +29,13 @@ public class PropagationRadiale implements AlgorithmePropagation {
         for (int dx = -rayon; dx <= rayon; dx++) {
             for (int dy = -rayon; dy <= rayon; dy++) {
 
-                // On calcule la distance euclidienne
                 double distance = Math.sqrt(dx * dx + dy * dy);
 
-                // On garde uniquement les cellules dans le cercle
-                // et on exclut la cellule elle-même (distance 0)
                 if (distance > 0 && distance <= rayon) {
+                    // Atténuation avec la distance : P(inclusion) = 1 / distance²
+                    // d=1 → 100%, d=√2 → 50%, d=2 → 25%, d=3 → 11%
+                    if (RNG.nextDouble() > 1.0 / (distance * distance)) continue;
+
                     int nx = x + dx;
                     int ny = y + dy;
 
@@ -58,4 +60,3 @@ public class PropagationRadiale implements AlgorithmePropagation {
     public int getRayon() { return rayon; }
     public void setRayon(int rayon) { this.rayon = rayon; }
 }
-// TODO

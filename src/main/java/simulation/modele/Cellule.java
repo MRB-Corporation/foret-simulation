@@ -37,6 +37,7 @@ public class Cellule implements ComportementFeu {
     public boolean stoppeLesFeu() {
         return terrain == TypeTerrain.COUPE_FEU
             || terrain == TypeTerrain.EAU
+            || terrain == TypeTerrain.ZONE_HUMIDE
             || terrain == TypeTerrain.ZONE_URBANISEE;
     }
 

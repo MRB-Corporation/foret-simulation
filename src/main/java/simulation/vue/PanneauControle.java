@@ -6,6 +6,7 @@ import simulation.algorithme.PropagationMoore;
 import simulation.algorithme.PropagationOrthogonale;
 import simulation.algorithme.PropagationRadiale;
 import simulation.chargeur.ChargeurTopologie;
+import simulation.chargeur.TopologiesPredefinis;
 import simulation.export.ExporteurSimulationCsv;
 import simulation.modele.Grille;
 import simulation.modele.Vent;
@@ -48,7 +49,6 @@ public class PanneauControle extends JPanel {
         this.simulateur = simulateur;
         this.vue = vue;
 
-        setLayout(new WrapLayout(FlowLayout.CENTER, 10, 8));
         setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         setBackground(Color.WHITE);
         setOpaque(true);
@@ -57,42 +57,45 @@ public class PanneauControle extends JPanel {
     }
 
     private void construire() {
-        // --- Démarrer / Pause ---
+        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+
+        JPanel ligne1 = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 4));
+        JPanel ligne2 = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 4));
+
+        // ── Ligne 1 : simulation + zoom + vitesse + algorithme + vent ───────────
+
         btnDemarrerPause = new JButton("Démarrer");
         btnDemarrerPause.addActionListener(e -> toggleDemarrerPause());
-        add(btnDemarrerPause);
+        ligne1.add(btnDemarrerPause);
 
-        // --- Reset ---
         JButton btnReset = new JButton("Réinitialiser");
         btnReset.addActionListener(e -> {
             simulateur.reset();
             enMarche = false;
             btnDemarrerPause.setText("Démarrer");
         });
-        add(btnReset);
+        ligne1.add(btnReset);
 
-        add(new JSeparator(JSeparator.VERTICAL));
+        ligne1.add(new JSeparator(JSeparator.VERTICAL));
 
-        // --- Zoom controls ---
         JButton btnZoomIn = new JButton("Zoom +");
         btnZoomIn.setToolTipText("Zoomer (touche +)");
         btnZoomIn.addActionListener(e -> vue.zoomIn());
-        add(btnZoomIn);
+        ligne1.add(btnZoomIn);
 
         JButton btnZoomOut = new JButton("Zoom -");
         btnZoomOut.setToolTipText("Dézoomer (touche -)");
         btnZoomOut.addActionListener(e -> vue.zoomOut());
-        add(btnZoomOut);
+        ligne1.add(btnZoomOut);
 
         JButton btnResetZoom = new JButton("Réinitialiser zoom");
         btnResetZoom.setToolTipText("Réinitialise le zoom (touche 0)");
         btnResetZoom.addActionListener(e -> vue.resetZoom());
-        add(btnResetZoom);
+        ligne1.add(btnResetZoom);
 
-        add(new JSeparator(JSeparator.VERTICAL));
+        ligne1.add(new JSeparator(JSeparator.VERTICAL));
 
-        // --- Slider vitesse simulation ---
-        add(new JLabel("Vitesse :"));
+        ligne1.add(new JLabel("Vitesse :"));
         JSlider sliderVitesse = new JSlider(
             Constantes.VITESSE_MIN_MS, Constantes.VITESSE_MAX_MS, Constantes.VITESSE_DEFAUT_MS
         );
@@ -101,55 +104,80 @@ public class PanneauControle extends JPanel {
         sliderVitesse.setPaintTicks(true);
         sliderVitesse.setPreferredSize(new Dimension(150, 40));
         sliderVitesse.addChangeListener(e -> simulateur.setVitesse(sliderVitesse.getValue()));
-        add(sliderVitesse);
+        ligne1.add(sliderVitesse);
 
-        add(new JSeparator(JSeparator.VERTICAL));
+        ligne1.add(new JSeparator(JSeparator.VERTICAL));
 
-        // --- Sélecteur algorithme ---
-        add(new JLabel("Algorithme :"));
+        ligne1.add(new JLabel("Algorithme :"));
         String[] noms = new String[ALGOS.length];
         for (int i = 0; i < ALGOS.length; i++) noms[i] = ALGOS[i].getNom();
         JComboBox<String> comboAlgo = new JComboBox<>(noms);
         comboAlgo.addActionListener(e -> simulateur.setAlgorithme(ALGOS[comboAlgo.getSelectedIndex()]));
-        add(comboAlgo);
+        ligne1.add(comboAlgo);
 
-        add(new JSeparator(JSeparator.VERTICAL));
+        ligne1.add(new JSeparator(JSeparator.VERTICAL));
 
-        // --- Vent ---
-        add(new JLabel("Vent :"));
+        ligne1.add(new JLabel("Vent :"));
         comboVent = new JComboBox<>(new String[]{
             "Aucun", "Du Nord", "Du Sud", "De l'Ouest", "De l'Est"
         });
         comboVent.addActionListener(e -> appliquerVent());
-        add(comboVent);
+        ligne1.add(comboVent);
 
         sliderVent = new JSlider(0, 100, 0);
         sliderVent.setToolTipText("Intensité du vent");
         sliderVent.setPreferredSize(new Dimension(100, 40));
         sliderVent.addChangeListener(e -> appliquerVent());
-        add(sliderVent);
+        ligne1.add(sliderVent);
 
-        add(new JSeparator(JSeparator.VERTICAL));
+        // ── Ligne 2 : topologies + CSV + export + compteur ──────────────────────
 
-        // --- Charger / Sauvegarder ---
+        ligne2.add(new JLabel("Topologie :"));
+        JComboBox<String> comboTopo = new JComboBox<>(new String[]{
+            "— choisir —",
+            "Forêt dense",
+            "Rivière en forêt",
+            "Ville avec cour"
+        });
+        comboTopo.addActionListener(e -> {
+            int idx = comboTopo.getSelectedIndex();
+            if (idx == 0) return;
+            Grille g;
+            switch (idx) {
+                case 1:  g = TopologiesPredefinis.foretDense();      break;
+                case 2:  g = TopologiesPredefinis.riviereEnForet();  break;
+                default: g = TopologiesPredefinis.villeAvecCour();   break;
+            }
+            simulateur.chargerGrille(g);
+            enMarche = false;
+            btnDemarrerPause.setText("Démarrer");
+            lblPas.setText("Pas : 0");
+            SwingUtilities.invokeLater(() -> comboTopo.setSelectedIndex(0));
+        });
+        ligne2.add(comboTopo);
+
+        ligne2.add(new JSeparator(JSeparator.VERTICAL));
+
         JButton btnCharger = new JButton("Charger CSV");
         btnCharger.addActionListener(e -> chargerFichier());
-        add(btnCharger);
+        ligne2.add(btnCharger);
 
         JButton btnSauvegarder = new JButton("Sauvegarder CSV");
         btnSauvegarder.addActionListener(e -> sauvegarderFichier());
-        add(btnSauvegarder);
+        ligne2.add(btnSauvegarder);
 
         JButton btnExporterSimulation = new JButton("Exporter simulation CSV");
         btnExporterSimulation.setToolTipText("Exporte les statistiques de la simulation démarrée");
         btnExporterSimulation.addActionListener(e -> exporterSimulation());
-        add(btnExporterSimulation);
+        ligne2.add(btnExporterSimulation);
 
-        add(new JSeparator(JSeparator.VERTICAL));
+        ligne2.add(new JSeparator(JSeparator.VERTICAL));
 
-        // --- Compteur de pas ---
         lblPas = new JLabel("Pas : 0");
-        add(lblPas);
+        ligne2.add(lblPas);
+
+        add(ligne1);
+        add(ligne2);
     }
 
     // ── Contrôles ──────────────────────────────────────────────────────────────

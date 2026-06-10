@@ -79,44 +79,40 @@ public class Simulateur {
 
     public void pasDeTemps() {
         pas++;
-        List<Cellule> aEnflammer = new ArrayList<>();
-        List<Cellule> aBruler    = new ArrayList<>();
+        // Double buffering : lecture depuis grille, écriture dans grilleProchaine.
+        // Toutes les cellules sont évaluées à partir de l'état figé du pas courant —
+        // mise à jour vraiment simultanée, sans ordre de parcours qui influence le résultat.
+        Grille grilleProchaine = copierGrille(grille);
 
         for (int y = 0; y < grille.getHauteur(); y++) {
             for (int x = 0; x < grille.getLargeur(); x++) {
                 Cellule c = grille.getCellule(x, y);
                 if (c.getEtat() != EtatCellule.EN_FEU) continue;
 
-                // Propagation et chauffage des voisins inflammables
+                Cellule cNext = grilleProchaine.getCellule(x, y);
+
                 for (Cellule voisin : algorithme.calculerVoisins(c, grille)) {
                     int dx = voisin.getX() - c.getX();
                     int dy = voisin.getY() - c.getY();
 
-                    voisin.chauffer(FormulesPhysiques.deltaTemperature(voisin));
+                    Cellule voisinNext = grilleProchaine.getCellule(voisin.getX(), voisin.getY());
+                    voisinNext.chauffer(FormulesPhysiques.deltaTemperature(voisin));
 
                     double proba = FormulesPhysiques.probabiliteInflammationAvecVent(voisin, vent, dx, dy);
-                    if (RNG.nextDouble() < proba) {
-                        aEnflammer.add(voisin);
+                    if (RNG.nextDouble() < proba && voisin.peutSEnflammer()) {
+                        voisinNext.setEtat(EtatCellule.EN_FEU);
+                        voisinNext.setCompteurCombuston(FormulesPhysiques.dureeCombuston(voisin));
                     }
                 }
 
-                // Décrémenter le compteur de combustion
-                c.decrementerCombuston();
-                if (c.getCompteurCombuston() <= 0) {
-                    aBruler.add(c);
+                cNext.decrementerCombuston();
+                if (cNext.getCompteurCombuston() <= 0) {
+                    cNext.setEtat(EtatCellule.BRULE);
                 }
             }
         }
 
-        for (Cellule c : aEnflammer) {
-            if (c.peutSEnflammer()) {
-                c.setEtat(EtatCellule.EN_FEU);
-                c.setCompteurCombuston(FormulesPhysiques.dureeCombuston(c));
-            }
-        }
-        for (Cellule c : aBruler) {
-            c.setEtat(EtatCellule.BRULE);
-        }
+        grille = grilleProchaine;
 
         if (simulationDemarree) {
             enregistrerInstantane();

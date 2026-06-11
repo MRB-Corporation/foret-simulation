@@ -30,9 +30,10 @@ la propagation.
 
 ## Topologies prédéfinies
 
-- **Forêt dense** : végétation dense avec zones humides indestructibles comme refuges
-- **Rivière en forêt** : rivière diagonale avec berges humides bloquant la propagation
-- **Ville avec cour** : blocs urbains séparés par des rues coupe-feu, parc central avec fontaine
+- **Forêt Amazonienne** : Très dense, très humide, traversée par le fleuve Amazone, propagation très difficile.
+- **Forêt des Landes (France)** : Forêt de pins très géométrique séparée par des pare-feux en terre, très inflammable.
+- **Forêt Boréale (Canada)** : Forêt très hétérogène parsemée de milliers de petits lacs naturels.
+- **Brousse Australienne (Outback)** : Très clairsemée, atrocement sèche et hautement inflammable, entrecoupée de bancs de sable.
 
 ## Structure du projet
 

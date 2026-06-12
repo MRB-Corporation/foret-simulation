@@ -1,0 +1,1 @@
+cmd.exe /X /C "C:\tools\openjdk\bin\javadoc.exe --add-modules javafx.controls,javafx.fxml @options @packages"

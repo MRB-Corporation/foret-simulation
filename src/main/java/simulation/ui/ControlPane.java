@@ -5,10 +5,8 @@ import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.scene.control.*;
 import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
-import javafx.stage.Stage;
 import simulation.services.Simulator;
 import simulation.services.MooreSpread;
 import simulation.services.OrthogonalSpread;
@@ -31,7 +29,8 @@ import java.io.IOException;
 /**
  * JavaFX control bar displayed at the bottom of the main window.
  *
- * <p>Row 1 — simulation: Start/Pause, Step, Reset, speed slider, algorithm, wind.</p>
+ * <p>Row 1 — simulation: Start/Pause, Step, Reset, speed slider with indicator,
+ * algorithm, wind.</p>
  * <p>Row 2 — interaction: topology, toroidal, paint terrain, zoom, files.</p>
  * <p>Row 3 — parameter ranges: humidity, inflammability, temperature sliders.</p>
  */
@@ -85,11 +84,11 @@ public class ControlPane extends VBox {
                     lastStepTime = now;
                     simulator.timeStep();
                     canvas.drawGrid(simulator.getGrid());
-                    
+
                     GridStats stats = simulator.computeStats();
                     statsPane.update(stats);
                     lblStep.setText("Step: " + simulator.getStep());
-                    
+
                     if (stats.getBurningCells() == 0 && simulator.getStep() > 0) {
                         stopTimer();
                     }
@@ -142,15 +141,28 @@ public class ControlPane extends VBox {
 
         row.getChildren().add(sep());
 
-        // Speed
+        // Speed slider — left = slow (2000ms), right = fast (50ms)
+        // We invert the value so moving right = faster
         row.getChildren().add(new Label("Speed:"));
-        Slider sliderSpeed = new Slider(Constants.MIN_SPEED_MS, Constants.MAX_SPEED_MS,
-                Constants.DEFAULT_SPEED_MS);
+        Slider sliderSpeed = new Slider(0, 100, 50);
         sliderSpeed.setOrientation(Orientation.HORIZONTAL);
         sliderSpeed.setPrefWidth(120);
-        sliderSpeed.valueProperty().addListener((o, old, val) ->
-                simulator.setSpeed(val.intValue()));
-        row.getChildren().add(sliderSpeed);
+        sliderSpeed.setShowTickLabels(false);
+
+        // Label showing current speed
+        Label lblSpeed = new Label("500 ms");
+        lblSpeed.setStyle("-fx-font-size: 10px; -fx-min-width: 50px;");
+
+        sliderSpeed.valueProperty().addListener((o, old, val) -> {
+            // Map 0-100 slider to MAX-MIN ms (inverted: right = faster)
+            int ms = (int)(Constants.MAX_SPEED_MS
+                    - (val.doubleValue() / 100.0)
+                    * (Constants.MAX_SPEED_MS - Constants.MIN_SPEED_MS));
+            simulator.setSpeed(ms);
+            lblSpeed.setText(ms + " ms");
+        });
+
+        row.getChildren().addAll(sliderSpeed, lblSpeed);
 
         row.getChildren().add(sep());
 
@@ -165,21 +177,28 @@ public class ControlPane extends VBox {
 
         row.getChildren().add(sep());
 
-        // Wind
+        // Wind direction + speed
         row.getChildren().add(new Label("Wind:"));
         ComboBox<String> comboWind = new ComboBox<>();
         comboWind.getItems().addAll("None","From North","From South","From West","From East");
         comboWind.getSelectionModel().selectFirst();
+
         Slider sliderWind = new Slider(0, 100, 0);
         sliderWind.setPrefWidth(90);
+
+        Label lblWind = new Label("0%");
+        lblWind.setStyle("-fx-font-size: 10px; -fx-min-width: 30px;");
+
         Runnable applyWind = () -> {
-            int idx = comboWind.getSelectionModel().getSelectedIndex();
+            int idx    = comboWind.getSelectionModel().getSelectedIndex();
             double spd = idx == 0 ? 0.0 : sliderWind.getValue() / 100.0;
             simulator.setWind(new Wind(WIND_DIRS[idx], spd));
+            lblWind.setText((int) sliderWind.getValue() + "%");
         };
         comboWind.setOnAction(e -> applyWind.run());
         sliderWind.valueProperty().addListener((o, old, val) -> applyWind.run());
-        row.getChildren().addAll(comboWind, sliderWind);
+
+        row.getChildren().addAll(comboWind, sliderWind, lblWind);
 
         row.getChildren().add(sep());
         row.getChildren().add(lblStep);
@@ -195,7 +214,13 @@ public class ControlPane extends VBox {
         // Topology presets
         row.getChildren().add(new Label("Topology:"));
         ComboBox<String> comboTopo = new ComboBox<>();
-        comboTopo.getItems().addAll("— choose —","Forêt Amazonienne","Forêt des Landes","Forêt Boréale","Brousse Australienne");
+        comboTopo.getItems().addAll(
+            "— choose —",
+            "Amazonian Forest",
+            "Landes Forest",
+            "Boreal Forest",
+            "Australian Bush"
+        );
         comboTopo.getSelectionModel().selectFirst();
         comboTopo.setOnAction(e -> {
             int idx = comboTopo.getSelectionModel().getSelectedIndex();
@@ -215,7 +240,7 @@ public class ControlPane extends VBox {
 
         // Toroidal checkbox
         CheckBox chkToroidal = new CheckBox("Toroidal");
-        chkToroidal.setTooltip(new Tooltip("Wrap grid edges"));
+        chkToroidal.setTooltip(new Tooltip("Wrap grid edges (left↔right, top↔bottom)"));
         chkToroidal.setOnAction(e -> simulator.setToroidal(chkToroidal.isSelected()));
         row.getChildren().add(chkToroidal);
 
@@ -271,15 +296,11 @@ public class ControlPane extends VBox {
 
     // ── Row 3: parameter ranges ───────────────────────────────────────────────
 
-    /**
-     * Row 3 lets the user adjust the random-generation ranges live.
-     * Changing a slider updates {@link Constants} fields so the next
-     * "Reset" or topology load uses the new values.
-     */
     private FlowPane buildRow3() {
         FlowPane row = row();
+
+        // Environment
         row.getChildren().add(new Label("🌦 Environment:"));
-        
         ComboBox<Environment.Season> comboSeason = new ComboBox<>();
         comboSeason.getItems().addAll(Environment.Season.values());
         comboSeason.getSelectionModel().select(simulator.getEnvironment().getSeason());
@@ -295,50 +316,70 @@ public class ControlPane extends VBox {
             simulator.getEnvironment().setSunlight(comboSunlight.getValue());
             simulator.applyEnvironment();
         });
-        
         row.getChildren().addAll(comboSeason, comboSunlight, sep());
-        
+
+        // Forest parameter sliders
         row.getChildren().add(new Label("🌲 Forest params:"));
 
         row.getChildren().add(new Label("Humidity min:"));
         Slider sHumMin = rangeSlider(0.0, 1.0, Constants.FOREST_HUMIDITY_MIN);
-        sHumMin.valueProperty().addListener((o, old, v) ->
-                Constants.FOREST_HUMIDITY_MIN = v.doubleValue());
-        row.getChildren().add(sHumMin);
+        Label lHumMin = valueLabel(Constants.FOREST_HUMIDITY_MIN);
+        sHumMin.valueProperty().addListener((o, old, v) -> {
+            Constants.FOREST_HUMIDITY_MIN = v.doubleValue();
+            lHumMin.setText(String.format("%.2f", v.doubleValue()));
+        });
+        row.getChildren().addAll(sHumMin, lHumMin);
 
         row.getChildren().add(new Label("max:"));
-        Slider sHumMax = rangeSlider(0.0, 1.0, Constants.FOREST_HUMIDITY_MIN + Constants.FOREST_HUMIDITY_RANGE);
-        sHumMax.valueProperty().addListener((o, old, v) ->
-                Constants.FOREST_HUMIDITY_RANGE = Math.max(0, v.doubleValue() - Constants.FOREST_HUMIDITY_MIN));
-        row.getChildren().add(sHumMax);
+        Slider sHumMax = rangeSlider(0.0, 1.0,
+                Constants.FOREST_HUMIDITY_MIN + Constants.FOREST_HUMIDITY_RANGE);
+        Label lHumMax = valueLabel(Constants.FOREST_HUMIDITY_MIN + Constants.FOREST_HUMIDITY_RANGE);
+        sHumMax.valueProperty().addListener((o, old, v) -> {
+            Constants.FOREST_HUMIDITY_RANGE = Math.max(0, v.doubleValue() - Constants.FOREST_HUMIDITY_MIN);
+            lHumMax.setText(String.format("%.2f", v.doubleValue()));
+        });
+        row.getChildren().addAll(sHumMax, lHumMax);
 
         row.getChildren().add(sep());
 
         row.getChildren().add(new Label("Inflam min:"));
         Slider sInflamMin = rangeSlider(0.0, 1.0, Constants.FOREST_INFLAM_MIN);
-        sInflamMin.valueProperty().addListener((o, old, v) ->
-                Constants.FOREST_INFLAM_MIN = v.doubleValue());
-        row.getChildren().add(sInflamMin);
+        Label lInflamMin = valueLabel(Constants.FOREST_INFLAM_MIN);
+        sInflamMin.valueProperty().addListener((o, old, v) -> {
+            Constants.FOREST_INFLAM_MIN = v.doubleValue();
+            lInflamMin.setText(String.format("%.2f", v.doubleValue()));
+        });
+        row.getChildren().addAll(sInflamMin, lInflamMin);
 
         row.getChildren().add(new Label("max:"));
-        Slider sInflamMax = rangeSlider(0.0, 1.0, Constants.FOREST_INFLAM_MIN + Constants.FOREST_INFLAM_RANGE);
-        sInflamMax.valueProperty().addListener((o, old, v) ->
-                Constants.FOREST_INFLAM_RANGE = Math.max(0, v.doubleValue() - Constants.FOREST_INFLAM_MIN));
-        row.getChildren().add(sInflamMax);
+        Slider sInflamMax = rangeSlider(0.0, 1.0,
+                Constants.FOREST_INFLAM_MIN + Constants.FOREST_INFLAM_RANGE);
+        Label lInflamMax = valueLabel(Constants.FOREST_INFLAM_MIN + Constants.FOREST_INFLAM_RANGE);
+        sInflamMax.valueProperty().addListener((o, old, v) -> {
+            Constants.FOREST_INFLAM_RANGE = Math.max(0, v.doubleValue() - Constants.FOREST_INFLAM_MIN);
+            lInflamMax.setText(String.format("%.2f", v.doubleValue()));
+        });
+        row.getChildren().addAll(sInflamMax, lInflamMax);
 
         row.getChildren().add(sep());
 
         row.getChildren().add(new Label("Temp min:"));
         Slider sTempMin = rangeSlider(0, 50, Constants.INIT_TEMP_MIN);
-        sTempMin.valueProperty().addListener((o, old, v) ->
-                Constants.INIT_TEMP_MIN = v.doubleValue());
-        row.getChildren().add(sTempMin);
+        Label lTempMin = valueLabel(Constants.INIT_TEMP_MIN);
+        sTempMin.valueProperty().addListener((o, old, v) -> {
+            Constants.INIT_TEMP_MIN = v.doubleValue();
+            lTempMin.setText(String.format("%.0f°C", v.doubleValue()));
+        });
+        row.getChildren().addAll(sTempMin, lTempMin);
 
         row.getChildren().add(new Label("max:"));
         Slider sTempMax = rangeSlider(0, 50, Constants.INIT_TEMP_MAX);
-        sTempMax.valueProperty().addListener((o, old, v) ->
-                Constants.INIT_TEMP_MAX = v.doubleValue());
-        row.getChildren().add(sTempMax);
+        Label lTempMax = valueLabel(Constants.INIT_TEMP_MAX);
+        sTempMax.valueProperty().addListener((o, old, v) -> {
+            Constants.INIT_TEMP_MAX = v.doubleValue();
+            lTempMax.setText(String.format("%.0f°C", v.doubleValue()));
+        });
+        row.getChildren().addAll(sTempMax, lTempMax);
 
         return row;
     }
@@ -376,14 +417,13 @@ public class ControlPane extends VBox {
 
     private void saveCsv() {
         File f = fileChooser("CSV", "*.csv").showSaveDialog(getScene().getWindow());
-        if (f != null) {
-            String path = ensureExt(f.getAbsolutePath(), ".csv");
-            GridLoader.save(simulator.getGrid(), path);
-        }
+        if (f != null) GridLoader.save(simulator.getGrid(),
+                ensureExt(f.getAbsolutePath(), ".csv"));
     }
 
     private void saveBinary() {
-        File f = fileChooser("Simulation save", "*.ffsave").showSaveDialog(getScene().getWindow());
+        File f = fileChooser("Simulation save", "*.ffsave")
+                .showSaveDialog(getScene().getWindow());
         if (f != null) {
             try {
                 simulator.saveBinary(ensureExt(f.getAbsolutePath(), BinarySerializer.EXTENSION));
@@ -395,7 +435,8 @@ public class ControlPane extends VBox {
     }
 
     private void loadBinary() {
-        File f = fileChooser("Simulation save", "*.ffsave").showOpenDialog(getScene().getWindow());
+        File f = fileChooser("Simulation save", "*.ffsave")
+                .showOpenDialog(getScene().getWindow());
         if (f != null) {
             try {
                 stopTimer();
@@ -444,9 +485,15 @@ public class ControlPane extends VBox {
 
     private static Slider rangeSlider(double min, double max, double value) {
         Slider s = new Slider(min, max, value);
-        s.setPrefWidth(80);
+        s.setPrefWidth(75);
         s.setShowTickLabels(false);
         return s;
+    }
+
+    private static Label valueLabel(double value) {
+        Label l = new Label(String.format("%.2f", value));
+        l.setStyle("-fx-font-size: 10px; -fx-min-width: 35px;");
+        return l;
     }
 
     private static FileChooser fileChooser(String desc, String ext) {

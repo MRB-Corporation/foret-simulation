@@ -1,0 +1,24 @@
+-classpath
+'C:/Users/cytech/.m2/repository/org/openjfx/javafx-controls/21.0.2/javafx-controls-21.0.2.jar;C:/Users/cytech/.m2/repository/org/openjfx/javafx-controls/21.0.2/javafx-controls-21.0.2-win.jar;C:/Users/cytech/.m2/repository/org/openjfx/javafx-graphics/21.0.2/javafx-graphics-21.0.2.jar;C:/Users/cytech/.m2/repository/org/openjfx/javafx-graphics/21.0.2/javafx-graphics-21.0.2-win.jar;C:/Users/cytech/.m2/repository/org/openjfx/javafx-base/21.0.2/javafx-base-21.0.2.jar;C:/Users/cytech/.m2/repository/org/openjfx/javafx-base/21.0.2/javafx-base-21.0.2-win.jar;C:/Users/cytech/.m2/repository/org/openjfx/javafx-fxml/21.0.2/javafx-fxml-21.0.2.jar;C:/Users/cytech/.m2/repository/org/openjfx/javafx-fxml/21.0.2/javafx-fxml-21.0.2-win.jar'
+-encoding
+'UTF-8'
+-protected
+-source
+'21'
+-sourcepath
+'H:/CYTECHDATA/Desktop/foret-test/src/main/java'
+-author
+-bottom
+'Copyright &#169; 2026. All rights reserved.'
+-charset
+'UTF-8'
+-d
+'H:/CYTECHDATA/Desktop/foret-test/docs/javadoc'
+-docencoding
+'UTF-8'
+-doctitle
+'Forest Fire Simulation 1.0.0 API'
+-use
+-version
+-windowtitle
+'Forest Fire Simulation 1.0.0 API'

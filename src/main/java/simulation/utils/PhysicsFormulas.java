@@ -17,44 +17,64 @@ public final class PhysicsFormulas {
      * Base probability that a cell catches fire when exposed to a burning neighbour.
      *
      * <p>Formula: P = inflammability × (1 − humidity) × (1 − resistance) × vegetationDensity</p>
+     * <p>Result is clamped to [0.0, 1.0].</p>
      *
      * @param c the candidate cell (must not be null)
      * @return probability in [0.0, 1.0]
      */
     public static double ignitionProbability(Cell c) {
-        return c.getInflammability()
-             * (1.0 - c.getHumidity())
-             * (1.0 - c.getResistance())
-             * c.getVegetationDensity();
+        double p = c.getInflammability()
+                 * (1.0 - c.getHumidity())
+                 * (1.0 - c.getResistance())
+                 * c.getVegetationDensity();
+        return Math.max(0.0, Math.min(1.0, p));
     }
 
     /**
      * Wind factor that amplifies or reduces fire spread toward a given direction.
      *
-     * <p>Formula: factor = 1 + (speed / maxSpeed) × cos(windAngle − targetAngle)</p>
+     * <p>Formula: factor = 1 + windAmplitude × (speed / maxSpeed) × cos(windAngle − targetAngle)</p>
+     *
+     * <p>A WIND_AMPLITUDE of 2.0 means the wind can triple the probability in its
+     * direction and reduce it to near zero against it — making the effect clearly
+     * visible in the simulation.</p>
+     *
+     * <p>Result is always ≥ 0 (clamped) so probability never goes negative.</p>
      *
      * @param wind the current wind (must not be null)
      * @param dx   column offset from burning cell to target neighbour
      * @param dy   row offset from burning cell to target neighbour
-     * @return multiplicative factor ≥ 0
+     * @return multiplicative factor in [0.0, 1 + WIND_AMPLITUDE]
      */
     public static double windFactor(Wind wind, int dx, int dy) {
+        if (wind.getSpeed() == 0.0) return 1.0;
+
+        // WIND_AMPLITUDE controls how strongly the wind biases propagation.
+        // 2.0 → factor ranges from ~0 (against wind) to ~3 (with wind)
+        final double WIND_AMPLITUDE = 2.0;
+
         double angleToNeighbour = Math.atan2(dy, dx);
-        return 1.0 + (wind.getSpeed() / Wind.MAX_SPEED)
-                   * Math.cos(wind.getDirection() - angleToNeighbour);
+        double factor = 1.0 + WIND_AMPLITUDE
+                * (wind.getSpeed() / Wind.MAX_SPEED)
+                * Math.cos(wind.getDirection() - angleToNeighbour);
+
+        // Clamp to avoid negative probabilities
+        return Math.max(0.0, factor);
     }
 
     /**
      * Ignition probability adjusted for wind direction and speed.
+     * Result is clamped to [0.0, 1.0].
      *
      * @param c    target cell
      * @param wind current wind
      * @param dx   column offset (burning → target)
      * @param dy   row offset   (burning → target)
-     * @return probability in [0.0, ∞) — clamped to 1.0 before use
+     * @return probability in [0.0, 1.0]
      */
     public static double ignitionProbabilityWithWind(Cell c, Wind wind, int dx, int dy) {
-        return ignitionProbability(c) * windFactor(wind, dx, dy);
+        double p = ignitionProbability(c) * windFactor(wind, dx, dy);
+        return Math.max(0.0, Math.min(1.0, p));
     }
 
     /**

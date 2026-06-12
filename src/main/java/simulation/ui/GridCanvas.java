@@ -26,16 +26,18 @@ import simulation.config.Constants;
  */
 public class GridCanvas extends Canvas {
 
-    private static final int MIN_CELL = 2;
+    private static final int MIN_CELL = 1;
     private static final int MAX_CELL = 60;
 
     private final Simulator simulator;
     private int cellSize = Constants.CELL_SIZE_PX;
 
+    /** Actual cell size used during last drawGrid() call — used for mouse mapping. */
+    private int lastRenderedCellSize = Constants.CELL_SIZE_PX;
+
     private int offsetX = 0;
     private int offsetY = 0;
 
-    // Zone selection state
     private boolean zoneActive = false;
     private int zoneX1, zoneY1, zoneX2, zoneY2;
 
@@ -55,7 +57,6 @@ public class GridCanvas extends Canvas {
     // ── Mouse handlers ────────────────────────────────────────────────────────
 
     private void registerHandlers() {
-
         setOnMouseClicked((MouseEvent e) -> {
             if (e.getButton() == MouseButton.PRIMARY && !e.isShiftDown()) {
                 int[] cell = toCell(e.getX(), e.getY());
@@ -74,7 +75,6 @@ public class GridCanvas extends Canvas {
 
         setOnMouseDragged((MouseEvent e) -> {
             if (e.getButton() == MouseButton.SECONDARY) {
-                // Right drag = brush paint
                 int[] cell = toCell(e.getX(), e.getY());
                 simulator.paintZone(cell[0], cell[1], cell[0], cell[1], paintTerrain);
             }
@@ -82,7 +82,7 @@ public class GridCanvas extends Canvas {
                 int[] cell = toCell(e.getX(), e.getY());
                 zoneX2 = cell[0];
                 zoneY2 = cell[1];
-                drawGrid(simulator.getGrid()); // refresh selection overlay
+                drawGrid(simulator.getGrid());
             }
         });
 
@@ -105,6 +105,8 @@ public class GridCanvas extends Canvas {
 
     /**
      * Redraws the entire grid on the canvas.
+     * The cell size is automatically increased if the grid is smaller than
+     * the canvas, so the grid always fills the available space.
      *
      * @param grid current grid state
      */
@@ -117,7 +119,19 @@ public class GridCanvas extends Canvas {
 
         if (grid == null) return;
 
+        // Compute effective cell size — always large enough to fill the canvas
         int t = cellSize;
+        if (w > 0 && h > 0) {
+            int minT = (int) Math.max(
+                Math.ceil(w / grid.getWidth()),
+                Math.ceil(h / grid.getHeight())
+            );
+            t = Math.max(t, minT);
+        }
+
+        // Store the actual rendered cell size for correct mouse-to-cell mapping
+        lastRenderedCellSize = t;
+
         int cols = (int) Math.ceil(w / t) + 1;
         int rows = (int) Math.ceil(h / t) + 1;
 
@@ -131,22 +145,24 @@ public class GridCanvas extends Canvas {
                 double px = (x - offsetX) * t;
                 double py = (y - offsetY) * t;
                 gc.fillRect(px, py, t, t);
-                
-                // Dessiner un arbre si c'est une forêt intacte et qu'on a assez de place
-                if (t >= 8 && c.getState() == CellState.INTACT && c.getTerrain() == TerrainType.FOREST) {
+
+                if (t >= 8 && c.getState() == CellState.INTACT
+                        && c.getTerrain() == TerrainType.FOREST) {
                     drawTree(gc, px, py, t);
                 }
             }
         }
 
-        // Grid lines (only if cells are large enough to avoid graying out the screen)
+        // Grid lines
         if (t >= 4) {
             gc.setStroke(Color.rgb(0, 0, 0, 0.15));
             gc.setLineWidth(0.5);
             int drawnCols = Math.max(0, endX - offsetX);
             int drawnRows = Math.max(0, endY - offsetY);
-            for (int x = 0; x <= drawnCols; x++) gc.strokeLine(x * t, 0, x * t, drawnRows * t);
-            for (int y = 0; y <= drawnRows; y++) gc.strokeLine(0, y * t, drawnCols * t, y * t);
+            for (int x = 0; x <= drawnCols; x++)
+                gc.strokeLine(x * t, 0, x * t, drawnRows * t);
+            for (int y = 0; y <= drawnRows; y++)
+                gc.strokeLine(0, y * t, drawnCols * t, y * t);
         }
 
         // Zone selection overlay
@@ -164,33 +180,31 @@ public class GridCanvas extends Canvas {
     }
 
     private void drawTree(GraphicsContext gc, double x, double y, double size) {
-        // Tronc
-        gc.setFill(Color.rgb(139, 69, 19)); // Marron
+        gc.setFill(Color.rgb(139, 69, 19));
         double trunkW = size * 0.2;
         double trunkH = size * 0.3;
-        double trunkX = x + (size - trunkW) / 2;
-        double trunkY = y + size - trunkH;
-        gc.fillRect(trunkX, trunkY, trunkW, trunkH);
+        gc.fillRect(x + (size - trunkW) / 2, y + size - trunkH, trunkW, trunkH);
 
-        // Feuilles (3 petits triangles superposés)
         gc.setFill(Color.LIMEGREEN);
-        gc.fillPolygon(new double[]{x + size*0.1, x + size*0.5, x + size*0.9},
-                       new double[]{y + size*0.7, y + size*0.3, y + size*0.7}, 3);
-        gc.fillPolygon(new double[]{x + size*0.15, x + size*0.5, x + size*0.85},
-                       new double[]{y + size*0.5,  y + size*0.15, y + size*0.5}, 3);
-        gc.fillPolygon(new double[]{x + size*0.2, x + size*0.5, x + size*0.8},
-                       new double[]{y + size*0.3, y + size*0.0,  y + size*0.3}, 3);
+        gc.fillPolygon(
+            new double[]{x+size*0.1, x+size*0.5, x+size*0.9},
+            new double[]{y+size*0.7, y+size*0.3, y+size*0.7}, 3);
+        gc.fillPolygon(
+            new double[]{x+size*0.15, x+size*0.5, x+size*0.85},
+            new double[]{y+size*0.5,  y+size*0.15, y+size*0.5}, 3);
+        gc.fillPolygon(
+            new double[]{x+size*0.2, x+size*0.5, x+size*0.8},
+            new double[]{y+size*0.3, y+size*0.0,  y+size*0.3}, 3);
     }
 
     private Color colorFor(Cell c) {
         if (c.getState() == CellState.ON_FIRE) {
-            // Gradation : du jaune brillant (nouveau feu) au rouge foncé (fin de feu)
             double ratio = Math.max(0.0, Math.min(1.0, c.getBurnCounter() / 15.0));
-            int r = (int)(139 + (255 - 139) * ratio); // 139 à 255
-            int g = (int)(255 * ratio);               // 0 à 255
+            int r = (int)(139 + (255 - 139) * ratio);
+            int g = (int)(255 * ratio);
             return Color.rgb(r, g, 0);
         }
-        if (c.getState() == CellState.BURNED)  return Color.rgb( 50,  30,  10);
+        if (c.getState() == CellState.BURNED) return Color.rgb(50, 30, 10);
         return switch (c.getTerrain()) {
             case FOREST     -> Color.rgb( 34, 139,  34);
             case WET_ZONE   -> Color.rgb( 32, 178, 170);
@@ -202,23 +216,28 @@ public class GridCanvas extends Canvas {
 
     // ── Zoom ──────────────────────────────────────────────────────────────────
 
-    /** Increases cell size. */
-    public void zoomIn()    { setCellSize(cellSize + 4); }
+    /** Increases cell size by 4 pixels. */
+    public void zoomIn()  { setCellSize(cellSize + 4); }
 
-    /** Decreases cell size. */
-    public void zoomOut()   { setCellSize(cellSize - 4); }
+    /** Decreases cell size by 4 pixels. */
+    public void zoomOut() { setCellSize(cellSize - 4); }
 
-    /** Resets cell size to fit the screen. */
+    /**
+     * Resets cell size so the full grid fits the current canvas size.
+     */
     public void resetZoom() {
         if (simulator.getGrid() == null) return;
         double w = getWidth();
         double h = getHeight();
-        int cellW = (int) (w / simulator.getGrid().getWidth());
-        int cellH = (int) (h / simulator.getGrid().getHeight());
-        cellSize = Math.max(MIN_CELL, Math.min(MAX_CELL, Math.min(cellW, cellH)));
+        if (w <= 0 || h <= 0) return;
+
+        Grid g = simulator.getGrid();
+        double cellW = w / g.getWidth();
+        double cellH = h / g.getHeight();
+        cellSize = (int) Math.max(MIN_CELL, Math.min(MAX_CELL, Math.min(cellW, cellH)));
         offsetX = 0;
         offsetY = 0;
-        drawGrid(simulator.getGrid());
+        drawGrid(g);
     }
 
     private void setCellSize(int size) {
@@ -231,7 +250,7 @@ public class GridCanvas extends Canvas {
     /**
      * Sets the terrain type used for brush/zone painting.
      *
-     * @param terrain terrain to paint
+     * @param terrain terrain to apply
      */
     public void setPaintTerrain(TerrainType terrain) {
         this.paintTerrain = terrain;
@@ -239,7 +258,12 @@ public class GridCanvas extends Canvas {
 
     // ── Camera ────────────────────────────────────────────────────────────────
 
-    /** Moves the camera offset. */
+    /**
+     * Moves the camera by the given cell offset.
+     *
+     * @param dx column offset
+     * @param dy row offset
+     */
     public void moveCamera(int dx, int dy) {
         offsetX = Math.max(0, offsetX + dx);
         offsetY = Math.max(0, offsetY + dy);
@@ -248,7 +272,18 @@ public class GridCanvas extends Canvas {
 
     // ── Utilities ─────────────────────────────────────────────────────────────
 
+    /**
+     * Converts screen pixel coordinates to grid cell coordinates,
+     * using the actual rendered cell size from the last draw call.
+     *
+     * @param px screen x
+     * @param py screen y
+     * @return [cellX, cellY]
+     */
     private int[] toCell(double px, double py) {
-        return new int[]{ offsetX + (int)(px / cellSize), offsetY + (int)(py / cellSize) };
+        return new int[]{
+            offsetX + (int)(px / lastRenderedCellSize),
+            offsetY + (int)(py / lastRenderedCellSize)
+        };
     }
 }

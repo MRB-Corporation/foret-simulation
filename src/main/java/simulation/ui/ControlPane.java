@@ -143,14 +143,18 @@ public class ControlPane extends VBox {
         row.getChildren().add(sep());
 
         // Speed
-        row.getChildren().add(new Label("Speed:"));
+        // Speed
+        Label lblSpeed = new Label("Speed: " + Constants.DEFAULT_SPEED_MS + " ms");
         Slider sliderSpeed = new Slider(Constants.MIN_SPEED_MS, Constants.MAX_SPEED_MS,
                 Constants.DEFAULT_SPEED_MS);
         sliderSpeed.setOrientation(Orientation.HORIZONTAL);
         sliderSpeed.setPrefWidth(120);
-        sliderSpeed.valueProperty().addListener((o, old, val) ->
-                simulator.setSpeed(val.intValue()));
-        row.getChildren().add(sliderSpeed);
+        sliderSpeed.valueProperty().addListener((o, old, val) -> {
+            simulator.setSpeed(val.intValue());
+            lblSpeed.setText("Speed: " + val.intValue() + " ms");
+        });
+        row.getChildren().addAll(lblSpeed, sliderSpeed);
+
 
         row.getChildren().add(sep());
 
@@ -278,7 +282,7 @@ public class ControlPane extends VBox {
      * Les nouvelles valeurs s'appliquent au prochain "Reset" ou "New Random".</p>
      */
     private FlowPane buildRow3() {
-        FlowPane row = row();
+        FlowPane row = row();git add .
         row.getChildren().add(new Label("🌦 Environment:"));
 
         ComboBox<Environment.Season> comboSeason = new ComboBox<>();
@@ -319,33 +323,21 @@ public class ControlPane extends VBox {
         });
         row.getChildren().addAll(lblInflam, sInflam, sep());
 
-        // ── Température (deux curseurs : min et max, avec sécurité) ────────────
-        Label lblTempMin = new Label(String.format("Temp min: %.0f°C", Constants.INIT_TEMP_MIN));
-        Slider sTempMin = rangeSlider(0, 50, Constants.INIT_TEMP_MIN);
-        sTempMin.valueProperty().addListener((o, old, v) -> {
-            Constants.INIT_TEMP_MIN = v.doubleValue();
-            // Sécurité : le min ne doit jamais dépasser le max
-            if (Constants.INIT_TEMP_MIN > Constants.INIT_TEMP_MAX) {
-                Constants.INIT_TEMP_MAX = Constants.INIT_TEMP_MIN;
-            }
-            lblTempMin.setText(String.format("Temp min: %.0f°C", Constants.INIT_TEMP_MIN));
+        
+        // ── Température (curseur unique : règle le centre) ────────────────────
+        Label lblTemp = new Label(String.format("Temperature: %.0f°C", Constants.INIT_TEMP_MIN));
+        Slider sTemp = rangeSlider(0, 50, Constants.INIT_TEMP_MIN);
+        sTemp.valueProperty().addListener((o, old, v) -> {
+            double center = v.doubleValue();
+            // Le curseur règle le minimum, et le max suit avec un petit écart fixe de 10°C
+            Constants.INIT_TEMP_MIN = center;
+            Constants.INIT_TEMP_MAX = center + 10.0;
+            lblTemp.setText(String.format("Temperature: %.0f°C", center));
         });
+        row.getChildren().addAll(lblTemp, sTemp);
 
-        Label lblTempMax = new Label(String.format("max: %.0f°C", Constants.INIT_TEMP_MAX));
-        Slider sTempMax = rangeSlider(0, 50, Constants.INIT_TEMP_MAX);
-        sTempMax.valueProperty().addListener((o, old, v) -> {
-            Constants.INIT_TEMP_MAX = v.doubleValue();
-            // Sécurité : le max ne doit jamais passer sous le min
-            if (Constants.INIT_TEMP_MAX < Constants.INIT_TEMP_MIN) {
-                Constants.INIT_TEMP_MIN = Constants.INIT_TEMP_MAX;
-            }
-            lblTempMax.setText(String.format("max: %.0f°C", Constants.INIT_TEMP_MAX));
-        });
+        
 
-        row.getChildren().addAll(lblTempMin, sTempMin, lblTempMax, sTempMax);
-
-        return row;
-    }
     // ── Timer control ─────────────────────────────────────────────────────────
 
     private void toggleStartPause() {

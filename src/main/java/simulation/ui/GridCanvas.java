@@ -60,7 +60,7 @@ public class GridCanvas extends Canvas {
     private void registerHandlers() {
 
         setOnMouseClicked((MouseEvent e) -> {
-            if (e.getButton() == MouseButton.PRIMARY && !e.isShiftDown()) {
+            if (e.getButton() == MouseButton.PRIMARY && !e.isShiftDown() && !e.isControlDown()) {
                 int[] cell = toCell(e.getX(), e.getY());
                 simulator.igniteCell(cell[0], cell[1]);
             }
@@ -73,7 +73,7 @@ public class GridCanvas extends Canvas {
                 zoneY1 = zoneY2 = cell[1];
                 zoneActive = true;
             }
-            if (e.getButton() == MouseButton.MIDDLE) {
+            if (e.getButton() == MouseButton.MIDDLE || e.isControlDown()) {
                 dragStartX = e.getX();
                 dragStartY = e.getY();
                 dragStartOffsetX = offsetX;
@@ -82,7 +82,7 @@ public class GridCanvas extends Canvas {
         });
 
         setOnMouseDragged((MouseEvent e) -> {
-            if (e.getButton() == MouseButton.SECONDARY) {
+            if (e.getButton() == MouseButton.SECONDARY && !e.isControlDown()) {
                 // Right drag = brush paint
                 int[] cell = toCell(e.getX(), e.getY());
                 simulator.paintZone(cell[0], cell[1], cell[0], cell[1], paintTerrain);
@@ -93,11 +93,12 @@ public class GridCanvas extends Canvas {
                 zoneY2 = cell[1];
                 drawGrid(simulator.getGrid()); // refresh selection overlay
             }
-            if (e.getButton() == MouseButton.MIDDLE) {
+            if (e.getButton() == MouseButton.MIDDLE || e.isControlDown()) {
                 int dx = (int) ((dragStartX - e.getX()) / cellSize);
                 int dy = (int) ((dragStartY - e.getY()) / cellSize);
-                offsetX = Math.max(0, dragStartOffsetX + dx);
-                offsetY = Math.max(0, dragStartOffsetY + dy);
+                offsetX = dragStartOffsetX + dx;
+                offsetY = dragStartOffsetY + dy;
+                clampOffsets();
                 drawGrid(simulator.getGrid());
             }
         });
@@ -270,9 +271,7 @@ public class GridCanvas extends Canvas {
         offsetX = (int) Math.round(cellXBefore - mouseX / cellSize);
         offsetY = (int) Math.round(cellYBefore - mouseY / cellSize);
 
-        // On évite de sortir de la grille (offset négatif)
-        offsetX = Math.max(0, offsetX);
-        offsetY = Math.max(0, offsetY);
+        clampOffsets();
 
         drawGrid(simulator.getGrid());
     }
@@ -307,6 +306,18 @@ public class GridCanvas extends Canvas {
     }
 
     // ── Camera ────────────────────────────────────────────────────────────────
+
+    private void clampOffsets() {
+        Grid grid = simulator.getGrid();
+        offsetX = Math.max(0, offsetX);
+        offsetY = Math.max(0, offsetY);
+        if (grid != null) {
+            int visibleCols = (int) Math.ceil(getWidth()  / cellSize);
+            int visibleRows = (int) Math.ceil(getHeight() / cellSize);
+            offsetX = Math.min(offsetX, Math.max(0, grid.getWidth()  - visibleCols));
+            offsetY = Math.min(offsetY, Math.max(0, grid.getHeight() - visibleRows));
+        }
+    }
 
     /** Moves the camera offset. */
     public void moveCamera(int dx, int dy) {

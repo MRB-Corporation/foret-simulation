@@ -35,6 +35,9 @@ public class GridCanvas extends Canvas {
     private int offsetX = 0;
     private int offsetY = 0;
 
+    private double dragStartX, dragStartY;
+    private int dragStartOffsetX, dragStartOffsetY;
+
     // Zone selection state
     private boolean zoneActive = false;
     private int zoneX1, zoneY1, zoneX2, zoneY2;
@@ -70,6 +73,12 @@ public class GridCanvas extends Canvas {
                 zoneY1 = zoneY2 = cell[1];
                 zoneActive = true;
             }
+            if (e.getButton() == MouseButton.MIDDLE) {
+                dragStartX = e.getX();
+                dragStartY = e.getY();
+                dragStartOffsetX = offsetX;
+                dragStartOffsetY = offsetY;
+            }
         });
 
         setOnMouseDragged((MouseEvent e) -> {
@@ -83,6 +92,13 @@ public class GridCanvas extends Canvas {
                 zoneX2 = cell[0];
                 zoneY2 = cell[1];
                 drawGrid(simulator.getGrid()); // refresh selection overlay
+            }
+            if (e.getButton() == MouseButton.MIDDLE) {
+                int dx = (int) ((dragStartX - e.getX()) / cellSize);
+                int dy = (int) ((dragStartY - e.getY()) / cellSize);
+                offsetX = Math.max(0, dragStartOffsetX + dx);
+                offsetY = Math.max(0, dragStartOffsetY + dy);
+                drawGrid(simulator.getGrid());
             }
         });
 

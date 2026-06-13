@@ -24,11 +24,11 @@ import java.util.Random;
 import java.util.function.Consumer;
 
 /**
- * Central controller of the forest-fire simulation.
+ * Contrôleur central de la simulation de feu de forêt (Le 'C' de l'architecture MVC).
  *
- * <p>Pure model class — no UI dependency. The JavaFX application
- * drives this via a {@link javafx.animation.AnimationTimer} and calls
- * {@link #setOnRefresh(Consumer)} to receive update notifications.</p>
+ * <p>Cette classe gère uniquement la logique du Modèle et ne contient aucune dépendance 
+ * vers l'interface graphique (JavaFX). L'interface graphique pilote ce Simulator via un 
+ * {@link javafx.animation.AnimationTimer} et s'abonne aux mises à jour via {@link #setOnRefresh(Consumer)}.</p>
  */
 public class Simulator {
 
@@ -45,7 +45,9 @@ public class Simulator {
 
     private static final Random RNG = new Random();
 
-    /** Initialises with default settings and a random grid. */
+    /** 
+     * Constructeur par défaut : initialise les paramètres de base et génère une grille aléatoire. 
+     */
     public Simulator() {
         speedMs           = Constants.DEFAULT_SPEED_MS;
         step              = 0;
@@ -61,10 +63,13 @@ public class Simulator {
     // ── Refresh callback ──────────────────────────────────────────────────────
 
     /**
-     * Sets a callback invoked after every grid update (step, ignite, load…).
-     * The JavaFX view registers here to redraw the canvas.
+     * Définit le "Callback" (la fonction de rappel) qui sera exécutée après chaque 
+     * mise à jour de la grille (avancée d'un "tick", clic de l'utilisateur, chargement...).
+     * 
+     * <p>C'est par ce biais que la Vue (JavaFX) est prévenue qu'elle doit se redessiner, 
+     * garantissant ainsi une étanchéité parfaite entre le calcul et l'affichage.</p>
      *
-     * @param callback consumer receiving the updated grid
+     * @param callback La fonction acceptant la nouvelle grille.
      */
     public void setOnRefresh(Consumer<Grid> callback) {
         this.onRefresh = callback;
@@ -77,8 +82,8 @@ public class Simulator {
     // ── Simulation control ────────────────────────────────────────────────────
 
     /**
-     * Records the initial snapshot the first time the simulation starts.
-     * Called by the JavaFX timer before the first step.
+     * Enregistre l'état initial (Snapshot) la toute première fois que la simulation démarre.
+     * Appelée par le timer JavaFX juste avant le premier calcul.
      */
     public void prepareStart() {
         if (!simulationStarted) {
@@ -88,7 +93,7 @@ public class Simulator {
         }
     }
 
-    /** Resets to initial state. */
+    /** Réinitialise la simulation à son état de départ exact. */
     public void reset() {
         step              = 0;
         grid              = copyGrid(initialGrid);
@@ -99,7 +104,7 @@ public class Simulator {
     }
 
     /**
-     * Advances exactly one time step (step-by-step mode).
+     * Fait avancer la simulation d'exactement un seul pas de temps (Mode Pas-à-Pas).
      */
     public void stepOnce() {
         if (!simulationStarted) {
@@ -114,8 +119,14 @@ public class Simulator {
     // ── Core logic ────────────────────────────────────────────────────────────
 
     /**
-     * Advances the simulation by one time step (double-buffered).
-     * Called by the JavaFX AnimationTimer every tick.
+     * Fonction maîtresse : Fait avancer la simulation d'une unité de temps.
+     * 
+     * <p>Nous avons implémenté ici le mécanisme de "Double Buffering" :
+     * On lit l'état de la grille courante (`grid`), on calcule les propagations, 
+     * et on écrit les résultats dans une TOUTE NOUVELLE grille (`next`).
+     * Cela évite le bug classique de l'automate cellulaire où un feu pourrait
+     * traverser toute la carte en une seule itération à cause de l'ordre de parcours
+     * de la boucle 'for'.</p>
      */
     public void timeStep() {
         step++;
@@ -167,10 +178,10 @@ public class Simulator {
     // ── User interaction ──────────────────────────────────────────────────────
 
     /**
-     * Ignites the cell at (x, y) if possible.
+     * Enflamme manuellement la cellule aux coordonnées (x, y). (Interaction Utilisateur)
      *
-     * @param x column
-     * @param y row
+     * @param x Colonne de la grille ciblée
+     * @param y Ligne de la grille ciblée
      */
     public void igniteCell(int x, int y) {
         Cell c = grid.getCell(x, y);
@@ -183,13 +194,14 @@ public class Simulator {
     }
 
     /**
-     * Paints a rectangular zone with the given terrain type.
+     * Dessine (ou "peint") une zone rectangulaire avec un type de terrain spécifique.
+     * Utilisé par l'outil Pinceau de l'interface pour créer des lacs ou des pare-feux en direct.
      *
-     * @param x1      top-left column
-     * @param y1      top-left row
-     * @param x2      bottom-right column
-     * @param y2      bottom-right row
-     * @param terrain terrain to apply
+     * @param x1      Colonne du coin supérieur gauche
+     * @param y1      Ligne du coin supérieur gauche
+     * @param x2      Colonne du coin inférieur droit
+     * @param y2      Ligne du coin inférieur droit
+     * @param terrain Le type de terrain à appliquer
      */
     public void paintZone(int x1, int y1, int x2, int y2, TerrainType terrain) {
         int minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
@@ -219,9 +231,9 @@ public class Simulator {
     }
 
     /**
-     * Loads a new grid, resetting simulation state.
+     * Charge une toute nouvelle grille et réinitialise le compteur de la simulation.
      *
-     * @param newGrid grid to load
+     * @param newGrid La nouvelle grille pré-générée à charger.
      */
     public void loadGrid(Grid newGrid) {
         step              = 0;
@@ -236,20 +248,20 @@ public class Simulator {
     // ── Binary save / load ────────────────────────────────────────────────────
 
     /**
-     * Saves current state to a binary file.
+     * Sauvegarde l'état actuel complet de la simulation dans un fichier binaire sérialisé.
      *
-     * @param path output path
-     * @throws IOException on write failure
+     * @param path Chemin de destination du fichier (.ffsave)
+     * @throws IOException Si l'écriture sur le disque échoue
      */
     public void saveBinary(String path) throws IOException {
         BinarySerializer.save(grid, wind, path);
     }
 
     /**
-     * Loads state from a binary file.
+     * Restaure l'état d'une simulation depuis un fichier binaire.
      *
-     * @param path input path
-     * @throws IOException on read failure
+     * @param path Chemin source du fichier
+     * @throws IOException Si la lecture du disque échoue
      */
     public void loadBinary(String path) throws IOException {
         SavedState state = BinarySerializer.load(path);

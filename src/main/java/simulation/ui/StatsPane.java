@@ -138,6 +138,7 @@ public class StatsPane extends VBox {
             }
 
             // Bar chart
+            @SuppressWarnings("unchecked")
             ObservableList<XYChart.Data<String, Number>> bars =
                     FXCollections.observableArrayList(
                         new XYChart.Data<>("Forest",   stats.getForestCells()),

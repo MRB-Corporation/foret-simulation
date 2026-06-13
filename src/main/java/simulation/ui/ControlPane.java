@@ -282,7 +282,7 @@ public class ControlPane extends VBox {
      * Les nouvelles valeurs s'appliquent au prochain "Reset" ou "New Random".</p>
      */
     private FlowPane buildRow3() {
-        FlowPane row = row();git add .
+        FlowPane row = row();
         row.getChildren().add(new Label("🌦 Environment:"));
 
         ComboBox<Environment.Season> comboSeason = new ComboBox<>();
@@ -336,9 +336,10 @@ public class ControlPane extends VBox {
         });
         row.getChildren().addAll(lblTemp, sTemp);
 
-        
+        return row;
+    }
 
-    // ── Timer control ─────────────────────────────────────────────────────────
+    // ── Timer control ──────────────────────────────────────────────────────────
 
     private void toggleStartPause() {
         if (running) {

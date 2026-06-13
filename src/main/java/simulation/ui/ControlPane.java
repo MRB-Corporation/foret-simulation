@@ -143,14 +143,18 @@ public class ControlPane extends VBox {
         row.getChildren().add(sep());
 
         // Speed
-        row.getChildren().add(new Label("Speed:"));
+        // Speed
+        Label lblSpeed = new Label("Speed: " + Constants.DEFAULT_SPEED_MS + " ms");
         Slider sliderSpeed = new Slider(Constants.MIN_SPEED_MS, Constants.MAX_SPEED_MS,
                 Constants.DEFAULT_SPEED_MS);
         sliderSpeed.setOrientation(Orientation.HORIZONTAL);
         sliderSpeed.setPrefWidth(120);
-        sliderSpeed.valueProperty().addListener((o, old, val) ->
-                simulator.setSpeed(val.intValue()));
-        row.getChildren().add(sliderSpeed);
+        sliderSpeed.valueProperty().addListener((o, old, val) -> {
+            simulator.setSpeed(val.intValue());
+            lblSpeed.setText("Speed: " + val.intValue() + " ms");
+        });
+        row.getChildren().addAll(lblSpeed, sliderSpeed);
+
 
         row.getChildren().add(sep());
 
@@ -269,17 +273,18 @@ public class ControlPane extends VBox {
         return row;
     }
 
-    // ── Row 3: parameter ranges ───────────────────────────────────────────────
-
-    /**
-     * Row 3 lets the user adjust the random-generation ranges live.
-     * Changing a slider updates {@link Constants} fields so the next
-     * "Reset" or topology load uses the new values.
+/**
+     * Row 3 : environnement + curseurs de paramètres de forêt .
+     *
+     * <p>Chaque curseur règle la valeur MINIMALE d'un attribut, et affiche sa
+     * valeur en direct. Une petite variation aléatoire fixe ({@code _RANGE})
+     * est ajoutée automatiquement à la génération pour garder de la variété.
+     * Les nouvelles valeurs s'appliquent au prochain "Reset" ou "New Random".</p>
      */
     private FlowPane buildRow3() {
         FlowPane row = row();
         row.getChildren().add(new Label("🌦 Environment:"));
-        
+
         ComboBox<Environment.Season> comboSeason = new ComboBox<>();
         comboSeason.getItems().addAll(Environment.Season.values());
         comboSeason.getSelectionModel().select(simulator.getEnvironment().getSeason());
@@ -295,55 +300,46 @@ public class ControlPane extends VBox {
             simulator.getEnvironment().setSunlight(comboSunlight.getValue());
             simulator.applyEnvironment();
         });
-        
+
         row.getChildren().addAll(comboSeason, comboSunlight, sep());
-        
+
         row.getChildren().add(new Label("🌲 Forest params:"));
 
-        row.getChildren().add(new Label("Humidity min:"));
-        Slider sHumMin = rangeSlider(0.0, 1.0, Constants.FOREST_HUMIDITY_MIN);
-        sHumMin.valueProperty().addListener((o, old, v) ->
-                Constants.FOREST_HUMIDITY_MIN = v.doubleValue());
-        row.getChildren().add(sHumMin);
+        // ── Humidité (curseur unique : règle le minimum) ──────────────────────
+        Label lblHum = new Label(String.format("Humidity: %.2f", Constants.FOREST_HUMIDITY_MIN));
+        Slider sHum = rangeSlider(0.0, 1.0, Constants.FOREST_HUMIDITY_MIN);
+        sHum.valueProperty().addListener((o, old, v) -> {
+            Constants.FOREST_HUMIDITY_MIN = v.doubleValue();
+            lblHum.setText(String.format("Humidity: %.2f", v.doubleValue()));
+        });
+        row.getChildren().addAll(lblHum, sHum, sep());
 
-        row.getChildren().add(new Label("max:"));
-        Slider sHumMax = rangeSlider(0.0, 1.0, Constants.FOREST_HUMIDITY_MIN + Constants.FOREST_HUMIDITY_RANGE);
-        sHumMax.valueProperty().addListener((o, old, v) ->
-                Constants.FOREST_HUMIDITY_RANGE = Math.max(0, v.doubleValue() - Constants.FOREST_HUMIDITY_MIN));
-        row.getChildren().add(sHumMax);
+        // ── Inflammabilité (curseur unique : règle le minimum) ────────────────
+        Label lblInflam = new Label(String.format("Inflammability: %.2f", Constants.FOREST_INFLAM_MIN));
+        Slider sInflam = rangeSlider(0.0, 1.0, Constants.FOREST_INFLAM_MIN);
+        sInflam.valueProperty().addListener((o, old, v) -> {
+            Constants.FOREST_INFLAM_MIN = v.doubleValue();
+            lblInflam.setText(String.format("Inflammability: %.2f", v.doubleValue()));
+        });
+        row.getChildren().addAll(lblInflam, sInflam, sep());
 
-        row.getChildren().add(sep());
-
-        row.getChildren().add(new Label("Inflam min:"));
-        Slider sInflamMin = rangeSlider(0.0, 1.0, Constants.FOREST_INFLAM_MIN);
-        sInflamMin.valueProperty().addListener((o, old, v) ->
-                Constants.FOREST_INFLAM_MIN = v.doubleValue());
-        row.getChildren().add(sInflamMin);
-
-        row.getChildren().add(new Label("max:"));
-        Slider sInflamMax = rangeSlider(0.0, 1.0, Constants.FOREST_INFLAM_MIN + Constants.FOREST_INFLAM_RANGE);
-        sInflamMax.valueProperty().addListener((o, old, v) ->
-                Constants.FOREST_INFLAM_RANGE = Math.max(0, v.doubleValue() - Constants.FOREST_INFLAM_MIN));
-        row.getChildren().add(sInflamMax);
-
-        row.getChildren().add(sep());
-
-        row.getChildren().add(new Label("Temp min:"));
-        Slider sTempMin = rangeSlider(0, 50, Constants.INIT_TEMP_MIN);
-        sTempMin.valueProperty().addListener((o, old, v) ->
-                Constants.INIT_TEMP_MIN = v.doubleValue());
-        row.getChildren().add(sTempMin);
-
-        row.getChildren().add(new Label("max:"));
-        Slider sTempMax = rangeSlider(0, 50, Constants.INIT_TEMP_MAX);
-        sTempMax.valueProperty().addListener((o, old, v) ->
-                Constants.INIT_TEMP_MAX = v.doubleValue());
-        row.getChildren().add(sTempMax);
+        
+        // ── Température (curseur unique : règle le centre) ────────────────────
+        Label lblTemp = new Label(String.format("Temperature: %.0f°C", Constants.INIT_TEMP_MIN));
+        Slider sTemp = rangeSlider(0, 50, Constants.INIT_TEMP_MIN);
+        sTemp.valueProperty().addListener((o, old, v) -> {
+            double center = v.doubleValue();
+            // Le curseur règle le minimum, et le max suit avec un petit écart fixe de 10°C
+            Constants.INIT_TEMP_MIN = center;
+            Constants.INIT_TEMP_MAX = center + 10.0;
+            lblTemp.setText(String.format("Temperature: %.0f°C", center));
+        });
+        row.getChildren().addAll(lblTemp, sTemp);
 
         return row;
     }
 
-    // ── Timer control ─────────────────────────────────────────────────────────
+    // ── Timer control ──────────────────────────────────────────────────────────
 
     private void toggleStartPause() {
         if (running) {

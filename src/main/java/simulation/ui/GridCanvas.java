@@ -21,7 +21,7 @@ import simulation.config.Constants;
  *   <li><b>Left click</b> — ignite a cell</li>
  *   <li><b>Right drag</b> — brush: paint terrain</li>
  *   <li><b>Shift + drag</b> — zone selection, applied on release</li>
- *   <li><b>Scroll wheel</b> — zoom in / out</li>
+ *   <li><b>Scroll wheel</b> — zoom in / out centred on the mouse</li>
  * </ul>
  */
 public class GridCanvas extends Canvas {
@@ -97,7 +97,8 @@ public class GridCanvas extends Canvas {
         });
 
         setOnScroll((ScrollEvent e) -> {
-            if (e.getDeltaY() > 0) zoomIn(); else zoomOut();
+            if (e.getDeltaY() > 0) zoomInAt(e.getX(), e.getY());
+            else                   zoomOutAt(e.getX(), e.getY());
         });
     }
 
@@ -131,7 +132,7 @@ public class GridCanvas extends Canvas {
                 double px = (x - offsetX) * t;
                 double py = (y - offsetY) * t;
                 gc.fillRect(px, py, t, t);
-                
+
                 // Dessiner un arbre si c'est une forêt intacte et qu'on a assez de place
                 if (t >= 8 && c.getState() == CellState.INTACT && c.getTerrain() == TerrainType.FOREST) {
                     drawTree(gc, px, py, t);
@@ -202,11 +203,63 @@ public class GridCanvas extends Canvas {
 
     // ── Zoom ──────────────────────────────────────────────────────────────────
 
-    /** Increases cell size. */
+    /** Increases cell size (zoom toward top-left, used by buttons). */
     public void zoomIn()    { setCellSize(cellSize + 4); }
 
-    /** Decreases cell size. */
+    /** Decreases cell size (zoom toward top-left, used by buttons). */
     public void zoomOut()   { setCellSize(cellSize - 4); }
+
+    /**
+     * Zoome en gardant la cellule sous la souris au même endroit à l'écran.
+     *
+     * @param mouseX position X de la souris (pixels)
+     * @param mouseY position Y de la souris (pixels)
+     */
+    public void zoomInAt(double mouseX, double mouseY) {
+        zoomAt(mouseX, mouseY, cellSize + 4);
+    }
+
+    /**
+     * Dézoome en gardant la cellule sous la souris au même endroit à l'écran.
+     *
+     * @param mouseX position X de la souris (pixels)
+     * @param mouseY position Y de la souris (pixels)
+     */
+    public void zoomOutAt(double mouseX, double mouseY) {
+        zoomAt(mouseX, mouseY, cellSize - 4);
+    }
+
+    /**
+     * Applique un nouveau zoom centré sur la position de la souris.
+     *
+     * <p>Principe : on calcule quelle cellule est sous la souris AVANT le zoom,
+     * puis on ajuste l'offset pour que cette même cellule reste sous la souris
+     * APRÈS le zoom.</p>
+     *
+     * @param mouseX   position X de la souris (pixels)
+     * @param mouseY   position Y de la souris (pixels)
+     * @param newSize  nouvelle taille de cellule souhaitée
+     */
+    private void zoomAt(double mouseX, double mouseY, int newSize) {
+        int clamped = Math.max(MIN_CELL, Math.min(MAX_CELL, newSize));
+        if (clamped == cellSize) return;
+
+        // Cellule sous la souris avant le zoom
+        double cellXBefore = offsetX + mouseX / cellSize;
+        double cellYBefore = offsetY + mouseY / cellSize;
+
+        cellSize = clamped;
+
+        // On recalcule l'offset pour que cette cellule reste sous la souris
+        offsetX = (int) Math.round(cellXBefore - mouseX / cellSize);
+        offsetY = (int) Math.round(cellYBefore - mouseY / cellSize);
+
+        // On évite de sortir de la grille (offset négatif)
+        offsetX = Math.max(0, offsetX);
+        offsetY = Math.max(0, offsetY);
+
+        drawGrid(simulator.getGrid());
+    }
 
     /** Resets cell size to fit the screen. */
     public void resetZoom() {

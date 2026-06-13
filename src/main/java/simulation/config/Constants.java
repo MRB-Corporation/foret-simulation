@@ -4,7 +4,12 @@ package simulation.config;
  * Central place for all simulation constants.
  *
  * <p>Fields marked as non-final are adjustable at runtime via the
- * parameter-range sliders in the control bar.</p>
+ * parameter sliders in the control bar.</p>
+ *
+ * <p><b>Principe des curseurs (option B) :</b> chaque curseur règle la valeur
+ * minimale d'un attribut de forêt (ex: humidité min). Une petite plage fixe
+ * ({@code _RANGE}) est ajoutée par-dessus pour garder un peu de variété
+ * aléatoire entre les cellules.</p>
  */
 public final class Constants {
 
@@ -44,24 +49,30 @@ public final class Constants {
     public static final double HUMIDITY_DROP_PER_STEP = 0.02;
 
     // ── Initial cell attribute ranges (adjustable at runtime) ─────────────────
+    //
+    // Chaque attribut de forêt est généré ainsi :
+    //     valeur = _MIN + random(0..1) × _RANGE
+    //
+    // Les curseurs de l'interface déplacent la valeur _MIN.
+    // Le _RANGE reste fixe et petit pour garder une légère variété naturelle.
 
-    /** Minimum initial temperature (°C). */
-    public static double INIT_TEMP_MIN = 15.0;
+    /** Minimum initial temperature (°C) — slider-controlled. */
+    public static double INIT_TEMP_MIN = 20.0;
 
-    /** Maximum initial temperature (°C). */
-    public static double INIT_TEMP_MAX = 35.0;
+    /** Maximum initial temperature (°C) — slider-controlled. */
+    public static double INIT_TEMP_MAX = 30.0;
 
-    /** Forest: minimum humidity. */
-    public static double FOREST_HUMIDITY_MIN = 0.2;
+    /** Forest: minimum humidity — slider-controlled. */
+    public static double FOREST_HUMIDITY_MIN = 0.35;
 
-    /** Forest: random humidity range. */
-    public static double FOREST_HUMIDITY_RANGE = 0.4;
+    /** Forest: fixed random humidity variation added on top of the minimum. */
+    public static double FOREST_HUMIDITY_RANGE = 0.10;
 
-    /** Forest: minimum inflammability. */
-    public static double FOREST_INFLAM_MIN = 0.4;
+    /** Forest: minimum inflammability — slider-controlled. */
+    public static double FOREST_INFLAM_MIN = 0.55;
 
-    /** Forest: random inflammability range. */
-    public static double FOREST_INFLAM_RANGE = 0.4;
+    /** Forest: fixed random inflammability variation added on top of the minimum. */
+    public static double FOREST_INFLAM_RANGE = 0.10;
 
     /** Forest: minimum resistance. */
     public static double FOREST_RESISTANCE_MIN = 0.2;

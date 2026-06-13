@@ -5,12 +5,12 @@ REM (Equivalent d'un Makefile)
 REM ==========================================
 
 REM ⚠️ MODIFIEZ CETTE LIGNE AVEC LE CHEMIN VERS VOTRE JAVAFX SUR LE PC DE L'ECOLE
-SET JAVAFX_PATH=C:\Users\louay\OneDrive\Bureau\javafx-sdk-21.0.11\lib
+SET JAVAFX_PATH=C:\javafx-sdk-21.0.11\lib
 
 echo [1/2] Compilation des fichiers Java...
 if not exist bin mkdir bin
-dir /s /b src\main\java\*.java > sources.txt
-javac --module-path "%JAVAFX_PATH%" --add-modules javafx.controls,javafx.fxml -d bin @sources.txt
+powershell -Command "Get-ChildItem -Recurse src\main\java -Filter *.java | ForEach-Object { '\"' + ($_.FullName -replace '\\', '/') + '\"' } | Set-Content -Encoding ASCII sources.txt"
+javac -encoding UTF-8 --module-path "%JAVAFX_PATH%" --add-modules javafx.controls,javafx.fxml -d bin @sources.txt
 del sources.txt
 
 IF %ERRORLEVEL% NEQ 0 (

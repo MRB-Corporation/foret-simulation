@@ -19,19 +19,19 @@ public class Cell implements FireBehaviour {
 
     private static final Random RANDOM = new Random();
 
-    // ── Position ──────────────────────────────────────────────────────────────
+    // --- Position ---
 
     private final int x;
     private final int y;
 
-    // ── State & terrain ───────────────────────────────────────────────────────
+    // --- State & terrain ---
 
     private CellState state;
     private TerrainType terrain;
 
-    // ── Physical attributes (all in [0.0, 1.0] unless noted) ─────────────────
+    // --- Physical attributes (all in [0.0, 1.0] unless noted) ---
 
-    /** Moisture level — high humidity slows ignition. */
+    /** Moisture level - high humidity slows ignition. */
     private double humidity;
 
     /** How easily this cell catches fire. */
@@ -40,16 +40,16 @@ public class Cell implements FireBehaviour {
     /** How long this cell resists fire once ignited. */
     private double resistance;
 
-    /** Amount of burnable vegetation — more density ⟹ longer burn. */
+    /** Amount of burnable vegetation - more density means longer burn. */
     private double vegetationDensity;
 
-    /** Current temperature in °C — starts random in [INIT_TEMP_MIN, INIT_TEMP_MAX]. */
+    /** Current temperature in degrees C - starts random in [INIT_TEMP_MIN, INIT_TEMP_MAX]. */
     private double temperature;
 
     /** Remaining time steps before the fire on this cell goes out. */
     private int burnCounter;
 
-    // ── Constructor ───────────────────────────────────────────────────────────
+    // --- Constructor ---
 
     /**
      * Creates a cell at position (x, y) with default forest attributes and a
@@ -63,17 +63,15 @@ public class Cell implements FireBehaviour {
         this.y = y;
         this.state = CellState.INTACT;
         this.terrain = TerrainType.FOREST;
-        this.humidity = 0.30;
-        this.inflammability = 0.50;
-        this.resistance = 0.50;
-        this.vegetationDensity = 1.0;
-        // Random temperature between INIT_TEMP_MIN and INIT_TEMP_MAX
-        this.temperature = Constants.INIT_TEMP_MIN
-                + RANDOM.nextDouble() * (Constants.INIT_TEMP_MAX - Constants.INIT_TEMP_MIN);
+        this.humidity = Constants.FOREST_HUMIDITY_MIN + RANDOM.nextDouble() * Constants.FOREST_HUMIDITY_RANGE;
+        this.inflammability = Constants.FOREST_INFLAM_MIN + RANDOM.nextDouble() * Constants.FOREST_INFLAM_RANGE;
+        this.resistance = Constants.FOREST_RESISTANCE_MIN + RANDOM.nextDouble() * Constants.FOREST_RESISTANCE_RANGE;
+        this.vegetationDensity = Constants.FOREST_DENSITY_MIN + RANDOM.nextDouble() * Constants.FOREST_DENSITY_RANGE;
+        this.temperature = Constants.INIT_TEMP_MIN + RANDOM.nextDouble() * (Constants.INIT_TEMP_MAX - Constants.INIT_TEMP_MIN);
         this.burnCounter = 0;
     }
 
-    // ── FireBehaviour ─────────────────────────────────────────────────────────
+    // --- FireBehaviour ---
 
     /**
      * {@inheritDoc}
@@ -117,7 +115,7 @@ public class Cell implements FireBehaviour {
         humidity = Math.max(0.0, Math.min(1.0, humidity + delta));
     }
 
-    // ── Combustion helpers ────────────────────────────────────────────────────
+    // --- Combustion helpers ---
 
     /**
      * Decrements the burn counter by one.
@@ -127,7 +125,7 @@ public class Cell implements FireBehaviour {
         if (burnCounter > 0) burnCounter--;
     }
 
-    // ── Getters ───────────────────────────────────────────────────────────────
+    // --- Getters ---
 
     /** @return column index */
     public int getX() { return x; }
@@ -153,13 +151,13 @@ public class Cell implements FireBehaviour {
     /** @return vegetation density in [0.0, 1.0] */
     public double getVegetationDensity() { return vegetationDensity; }
 
-    /** @return temperature in °C */
+    /** @return temperature in degrees C */
     public double getTemperature() { return temperature; }
 
     /** @return remaining burn steps */
     public int getBurnCounter() { return burnCounter; }
 
-    // ── Setters ───────────────────────────────────────────────────────────────
+    // --- Setters ---
 
     /** @param state new fire state */
     public void setState(CellState state) { this.state = state; }
@@ -167,7 +165,7 @@ public class Cell implements FireBehaviour {
     /** @param terrain new terrain type */
     public void setTerrain(TerrainType terrain) { this.terrain = terrain; }
 
-    /** @param v temperature in °C */
+    /** @param v temperature in degrees C */
     public void setTemperature(double v) { this.temperature = v; }
 
     /** @param v remaining burn steps */
